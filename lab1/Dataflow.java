@@ -4,7 +4,7 @@ import java.util.LinkedList;
 import java.util.BitSet;
 
 class Random {
-	int	w;
+	int     w;
 	int	z;
 	
 	public Random(int seed)
@@ -54,7 +54,7 @@ class Vertex {
 
 		while (iter.hasNext()) {
 			v = iter.next();
-			out.or(v.in);
+			out.or(v.in); // kopierar över v->out
 		}
 
 		old = in;
@@ -62,8 +62,8 @@ class Vertex {
 		// in = use U (out - def)
 
 		in = new BitSet();
-		in.or(out);	
-		in.andNot(def);	
+		in.or(out);	// kopierar över out->in
+		in.andNot(def);	// nollställer
 		in.or(use);
 
 		if (!in.equals(old)) {
