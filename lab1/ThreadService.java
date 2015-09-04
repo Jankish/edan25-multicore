@@ -8,7 +8,10 @@ class ThreadService implements Runnable {
 		
 	}
 	
-	public run() {
-	// Stubs: ToDo
+
+	@Override
+	public void run() {
+		// TODO Auto-generated method stub
+		
 	}
 }	
