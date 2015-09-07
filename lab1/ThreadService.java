@@ -2,16 +2,17 @@ import java.util.concurrent.*;
 import java.util.LinkedList;
 import java.util.ListIterator;
 
-class ThreadService implements Runnable {
+class ThreadService implements Executor{
 
-	static ExecutorService executor;
+	static ThreadPoolExecutor executor;
 	private int nThread;
+	public static final int MAX_SYSTEM_THREADS = Runtime.getRuntime().availableProcessors();
 	private LinkedList<Vertex> worklist;
+	private Runnable command;
 
 	public ThreadService(LinkedList<Vertex> worklist, int nthread) {
-		nThread = nthread;
 		this.worklist = worklist;
-		executor = Executors.newFixedThreadPool(nThread);
+		executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(nThread);
 	}
 
 	public static void multiThreadLiveness(LinkedList<Vertex> worklist) {
@@ -22,6 +23,7 @@ class ThreadService implements Runnable {
 			while (!worklist.isEmpty()) {
 				u = worklist.remove();
 				u.listed = false;
+//				System.out.println("ThreadedLiveness " /*+ (id)*/ );
 				u.computeIn(worklist);
 			}
 		}
@@ -30,9 +32,15 @@ class ThreadService implements Runnable {
 		// vertex[i].print();
 	}
 
-	@Override
 	public void run() {
 		// TODO Auto-generated method stub
+		execute(command);
+	}
+
+	@Override
+	public void execute(Runnable command) {
+		// TODO Auto-generated method stub
+		this.command = command;
 		multiThreadLiveness(worklist);
 	}
 }
