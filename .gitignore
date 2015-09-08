@@ -1,3 +1,4 @@
 # Ignore following files
 *.class
 out
+.idea
