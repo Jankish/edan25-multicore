@@ -24,7 +24,7 @@ class Random {
 
 class Vertex {
 	int			index;
-	boolean			listed;
+	volatile boolean	listed;
 	LinkedList<Vertex>	pred;
 	LinkedList<Vertex>	succ;
 	BitSet			in;
@@ -54,7 +54,9 @@ class Vertex {
 
 		while (iter.hasNext()) {
 			v = iter.next();
-			out.or(v.in);
+			synchronized(this) {
+				out.or(v.in);
+			}
 		}
 
 		old = in;
@@ -105,6 +107,30 @@ class Vertex {
 			if (out.get(i))
 				System.out.print("" + i + " ");
 		System.out.println("}\n");
+	}
+
+}
+
+class Work extends Thread {
+	
+	private LinkedList<Vertex> worklist;
+	private Vertex u;
+
+	public Work(LinkedList<Vertex> worklist) {
+		this.worklist = worklist;
+	}
+
+
+
+	@Override
+	public void run() {
+		while (!worklist.isEmpty()) {
+			u = worklist.remove();
+			//synchronized(this) {
+				u.listed = false;
+			//}
+			u.computeIn(worklist);
+		}
 	}
 
 }
@@ -165,7 +191,7 @@ class Dataflow {
 		}
 	}
 
-	public static void liveness(Vertex vertex[])
+	public static void liveness(Vertex vertex[], int nthread)
 	{
 		Vertex			u;
 		Vertex			v;
@@ -177,21 +203,32 @@ class Dataflow {
 		System.out.println("computing liveness...");
 
 		begin = System.nanoTime();
-		worklist = new LinkedList<Vertex>();
-
-		for (i = 0; i < vertex.length; ++i) {
-			worklist.addLast(vertex[i]);
-			vertex[i].listed = true;
+		
+		Work[] threads = new Work[nthread];
+		for (i = 0; i < nthread; i++) {
+			worklist = new LinkedList<Vertex>();
+			for (int j = i; j < vertex.length; j += nthread) {
+				worklist.addLast(vertex[j]);
+			}
+			threads[i] = new Work(worklist);
+			threads[i].start();
 		}
-
-		while (!worklist.isEmpty()) {
-			u = worklist.remove();
-			u.listed = false;
-			u.computeIn(worklist);
+		
+		for(i = 0; i < nthread; i++) {
+			try {
+				threads[i].join();
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
 		}
+		
 		end = System.nanoTime();
 
 		System.out.println("T = " + (end-begin)/1e9 + " s");
+	}
+
+	public static void liveness(Vertex vertex[]) {
+	
 	}
 
 	public static void main(String[] args)
@@ -219,6 +256,7 @@ class Dataflow {
 		System.out.println("nvertex = " + nvertex);
 		System.out.println("maxsucc = " + maxsucc);
 		System.out.println("nactive = " + nactive);
+		System.out.println("nthread = " + nthread);
 
 		vertex = new Vertex[nvertex];
 
@@ -227,7 +265,7 @@ class Dataflow {
 
 		generateCFG(vertex, maxsucc, r);
 		generateUseDef(vertex, nsym, nactive, r);
-		liveness(vertex);
+		liveness(vertex, nthread);
 
 		if (print)
 			for (i = 0; i < vertex.length; ++i)
