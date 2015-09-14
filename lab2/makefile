@@ -1,8 +1,14 @@
-NSYM	= 10000
-NVERTEX	= 1000
+#NSYM	= 10000
+#NVERTEX	= 1000
+#MAXSUCC	= 4
+#NACTIVE	= 100
+#PRINT   = 1
+
+NSYM	= 100
+NVERTEX	= 10
 MAXSUCC	= 4
 NACTIVE	= 100
-PRINT   = 1
+PRINT   = 0 
 
 all:
 	@mkdir -p classes

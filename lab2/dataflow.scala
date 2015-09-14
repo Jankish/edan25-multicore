@@ -33,12 +33,21 @@ class Controller(val cfg: Array[Vertex]) extends Actor {
     react {
       case Ready() => {
         started += 1;
-        //println("controller has seen " + started);
+        println("controller has seen " + started);
         if (started == cfg.length) {
           for (u <- cfg)
             u ! new Go;
         }
         act();
+      }
+      case Stop() => {
+	started -= 1;
+	println("controller has stopped verte, left is " + started);
+	if (started == 0) {
+	  val end = System.currentTimeMillis();
+	  println("T = " + (end - begin)/1e9 + " s");
+	}
+	act();
       }
     }
   }
@@ -54,7 +63,7 @@ class Vertex(val index: Int, s: Int, val controller: Controller) extends Actor {
 
   def connect(that: Vertex)
   {
-    //println(this.index + "->" + that.index);
+    println(this.index + "->" + that.index);
     this.succ = that :: this.succ;
     that.pred = this :: that.pred;
   }
@@ -63,7 +72,7 @@ class Vertex(val index: Int, s: Int, val controller: Controller) extends Actor {
     react {
       case Start() => {
         controller ! new Ready;
-        //println("started " + index);
+        println("started " + index);
         act();
       }
 
