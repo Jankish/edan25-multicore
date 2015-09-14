@@ -73,7 +73,7 @@ class Vertex(val index: Int, s: Int, val controller: Controller) extends Actor {
   def update(nBit : BitSet) {
 	for (x <- succ){
 		out.or(x.in);
-		println("succ " + index);
+		println("succ " + x.index);
 	}
 	old.or(nBit);
 	in = new BitSet(s);
@@ -84,7 +84,8 @@ class Vertex(val index: Int, s: Int, val controller: Controller) extends Actor {
 
   
   def stop() {
-	  controller ! new Stop; 
+	  controller ! new Stop;
+	  		println("node stopped " + index); 
   }
   
   def act() { 
@@ -103,7 +104,7 @@ class Vertex(val index: Int, s: Int, val controller: Controller) extends Actor {
 				val bs = new BitSet(s);
 				bs.or(in);
 				p ! new Change(bs);
-				println("message send " + index);
+				println("message send to " + p.index);
 			}
 		}
 		act();
@@ -116,7 +117,7 @@ class Vertex(val index: Int, s: Int, val controller: Controller) extends Actor {
 	  }
 	  
       case Stop()  => {
-	  	controller ! new Stop;    
+	  	stop();  
 	  }
     }
   }
