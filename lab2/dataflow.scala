@@ -41,13 +41,14 @@ class Controller(val cfg: Array[Vertex]) extends Actor {
         act();
       }
       case Stop() => {
-	started -= 1;
-	println("controller has stopped verte, left is " + started);
-	if (started == 0) {
-	  val end = System.currentTimeMillis();
-	  println("T = " + (end - begin)/1e9 + " s");
-	}
-	act();
+	  	started -= 1;
+	  	println("controller has stopped vertex, left is " + started);
+	  	if (started == 0) {
+	  		val end = System.currentTimeMillis();
+	  		println("T = " + (end - begin)/1e9 + " s");
+		} else {
+			act();
+		}
       }
     }
   }
@@ -60,6 +61,7 @@ class Vertex(val index: Int, s: Int, val controller: Controller) extends Actor {
   val defs               = new BitSet(s);
   var in                 = new BitSet(s);
   var out                = new BitSet(s);
+  var old				 = new BitSet(s);
 
   def connect(that: Vertex)
   {
@@ -67,8 +69,20 @@ class Vertex(val index: Int, s: Int, val controller: Controller) extends Actor {
     this.succ = that :: this.succ;
     that.pred = this :: that.pred;
   }
-
-  def act() {
+  
+  def update() {
+	for (x <- succ){
+		out.or(x.in);
+	}
+	var old = in;	
+	in = new BitSet();
+	in.or(out);	
+	in.andNot(defs);	
+	in.or(uses);
+  }
+  
+  
+  def act() { 
     react {
       case Start() => {
         controller ! new Ready;
@@ -78,10 +92,34 @@ class Vertex(val index: Int, s: Int, val controller: Controller) extends Actor {
 
       case Go() => {
         // LAB 2: Start working with this vertex.
-        act();
+        
+		update();
+        if (!in.equals(old)) {
+			for (p <- pred){
+				val bs = new BitSet();
+				bs.or(in);
+				p ! new Change(bs);
+			}
+		}
+		act();
       }
-
-      case Stop()  => { }
+	  
+	  case Change(inBits)  => {
+/*
+	  	out.or(inBits);
+	  	in.or(out);	
+		in.andNot(def);	
+		in.or(use);  
+*/
+		update();
+		controller ! new Stop;
+	  }
+	  
+/*
+      case Stop()  => {
+	  	controller ! new Stop;    
+	  }
+*/
     }
   }
 
