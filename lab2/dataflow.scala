@@ -61,7 +61,7 @@ class Vertex(val index: Int, s: Int, val controller: Controller) extends Actor {
   val defs               = new BitSet(s);
   var in                 = new BitSet(s);
   var out                = new BitSet(s);
-  var old				 = new BitSet(s);
+  val old				 = new BitSet(s);
 
   def connect(that: Vertex)
   {
@@ -70,17 +70,22 @@ class Vertex(val index: Int, s: Int, val controller: Controller) extends Actor {
     that.pred = this :: that.pred;
   }
   
-  def update() {
+  def update(nBit : BitSet) {
 	for (x <- succ){
 		out.or(x.in);
+		println("succ " + index);
 	}
-	var old = in;	
-	in = new BitSet();
+	old.or(nBit);
+	in = new BitSet(s);
 	in.or(out);	
 	in.andNot(defs);	
 	in.or(uses);
   }
+
   
+  def stop() {
+	  controller ! new Stop; 
+  }
   
   def act() { 
     react {
@@ -92,34 +97,27 @@ class Vertex(val index: Int, s: Int, val controller: Controller) extends Actor {
 
       case Go() => {
         // LAB 2: Start working with this vertex.
-        
-		update();
+        update(in);
         if (!in.equals(old)) {
 			for (p <- pred){
-				val bs = new BitSet();
+				val bs = new BitSet(s);
 				bs.or(in);
 				p ! new Change(bs);
+				println("message send " + index);
 			}
 		}
 		act();
       }
 	  
 	  case Change(inBits)  => {
-/*
-	  	out.or(inBits);
-	  	in.or(out);	
-		in.andNot(def);	
-		in.or(use);  
-*/
-		update();
-		controller ! new Stop;
+		update(inBits);
+		println("message recieved and updated " + index);
+		stop();
 	  }
 	  
-/*
       case Stop()  => {
 	  	controller ! new Stop;    
 	  }
-*/
     }
   }
 
