@@ -34,7 +34,7 @@ class Controller(val cfg: Array[Vertex]) extends Actor {
     react {
       case Ready() => {
         started += 1;
-        println("controller has seen " + started);
+//         println("controller has seen " + started);
         if (started == cfg.length) {
           for (u <- cfg)
             u ! new Go;
@@ -46,14 +46,13 @@ class Controller(val cfg: Array[Vertex]) extends Actor {
       
       case Done() => {
 	  	started -= 1;
-	  	println("STOPPED  and left = " + started);
+	//  	println("STOPPED  and left = " + started);
 	  	if (started == 0) {
 	  		this ! new Stop;
 		} 
 		act();
       }
-      
-      
+
       case Stop() => {
 	  	val end = System.currentTimeMillis();
 	  	println("T = " + (end - begin)/1e9 + " s");
@@ -79,15 +78,15 @@ class Vertex(val index: Int, s: Int, val controller: Controller) extends Actor {
   }
   
   def update(nBit : BitSet) {
-	in.and(new BitSet(s));
-	in.or(nBit);
+// 	in.and(new BitSet(s));
+	out.or(nBit);
   }
   
   def act() { 
     react {
       case Start() => {
         controller ! new Ready;
-        println("started: " + index);
+     //   println("started: " + index);
         act();
       }
 
@@ -99,7 +98,7 @@ class Vertex(val index: Int, s: Int, val controller: Controller) extends Actor {
 		} else {
 			for (x <- succ){
 				out.or(x.in);
-				println(index + " -> has succ -> " + x.index);
+		//		println(index + " -> has succ -> " + x.index);
 			}
 			old = in;
 			in = new BitSet(s);
@@ -107,17 +106,17 @@ class Vertex(val index: Int, s: Int, val controller: Controller) extends Actor {
 			in.andNot(defs);	
 			in.or(uses);
 			if (!in.equals(old)) {
-				println("OLIKA INDEX " + index);
+	//			println("OLIKA INDEX " + index);
 				for (p <- pred){
 					val bs = new BitSet(s);
 					bs.or(in);
 					p ! new Change(bs);
-					println(index + " -> has send message to -> " + p.index);
+	//				println(index + " -> has send message to -> " + p.index);
 				}
 				if (!pred.isEmpty && succ.isEmpty)
 					this ! new Stop; 
 			} else {
-				println("LIKA INDEX " + index);
+	//			println("LIKA INDEX " + index);
 				this ! new Stop;
 			}
 		}
@@ -126,14 +125,14 @@ class Vertex(val index: Int, s: Int, val controller: Controller) extends Actor {
 	  
 	  case Change(inBits) => {
 		update(inBits);
-		println(index + " recieved message and updated ");
+	//	println(index + " recieved message and updated ");
 		this ! new Stop;
 		act();
 	  }
 	  
       case Stop()  => { 
 	      controller ! new Done;
-	      println("node stopped: " + index);
+	  //    println("node stopped: " + index);
 	  }
     }
   }
@@ -150,6 +149,7 @@ class Vertex(val index: Int, s: Int, val controller: Controller) extends Actor {
     printSet("use", index, uses);
     printSet("def", index, defs);
     printSet("in", index, in);
+    printSet("out", index, out);
     println("");
   }
 }
