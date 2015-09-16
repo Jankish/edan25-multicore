@@ -8,7 +8,7 @@ case class Stop();
 case class Ready();
 case class Go();
 case class Change(in: BitSet);
-case class Done();
+case class Done(index: Int);
 
 class Random(seed: Int) {
         var w = seed + 1;
@@ -42,15 +42,12 @@ class Controller(val cfg: Array[Vertex]) extends Actor {
         act();
       }
       
-      
-      
-      case Done() => {
+      case Done(x) => {
 	  	started -= 1;
-	//  	println("STOPPED  and left = " + started);
-	  	if (started == 0) {
-	  		this ! new Stop;
+	 	println("STOPPED node = " + x + "  and left = " + started);
+	  	if (started != 0) {
+	  		act();
 		} 
-		act();
       }
 
       case Stop() => {
@@ -68,71 +65,72 @@ class Vertex(val index: Int, s: Int, val controller: Controller) extends Actor {
   val defs               = new BitSet(s);
   var in                 = new BitSet(s);
   var out                = new BitSet(s);
-  var old				 = new BitSet(s);
-  
-  def connect(that: Vertex)
-  {
+  var updated:Int		 = 0;
+  var mess:Int			 = 0;
+			  
+  def connect(that: Vertex) {
     println(this.index + "->" + that.index);
     this.succ = that :: this.succ;
     that.pred = this :: that.pred;
   }
   
-  def update(nBit : BitSet) {
-// 	in.and(new BitSet(s));
-	out.or(nBit);
+   def update(outBits : BitSet) {
+  	for (x <- succ){
+		outBits.or(x.in);
+	}
+	var old = new BitSet();
+	old = in;
+	in = new BitSet();
+	in.or(outBits);	
+	in.andNot(defs);	
+	in.or(uses);
+	
+	if (!in.equals(old)) {
+		for (p <- pred){
+			val bs = new BitSet();
+			bs.or(in);
+			p ! new Change(bs);
+			println(index + " has send message to -> " + p.index);
+		}
+		println(" updated node = " + index + " times: " + updated);
+	} else {
+		println("NOW EQUAL------- node " + index);
+		this ! new Stop;
+	}
+		   updated += 1;
   }
   
   def act() { 
     react {
       case Start() => {
-        controller ! new Ready;
-     //   println("started: " + index);
-        act();
+	      controller ! new Ready;
+	      println("started: " + index);
+	      act();
       }
 
       case Go() => {
         // LAB 2: Start working with this vertex.
-		
+        println("Go: " + index);
 		if (succ.isEmpty && pred.isEmpty) {
 			this ! new Stop;
 		} else {
-			for (x <- succ){
-				out.or(x.in);
-		//		println(index + " -> has succ -> " + x.index);
-			}
-			old = in;
-			in = new BitSet(s);
-			in.or(out);	
-			in.andNot(defs);	
-			in.or(uses);
-			if (!in.equals(old)) {
-	//			println("OLIKA INDEX " + index);
-				for (p <- pred){
-					val bs = new BitSet(s);
-					bs.or(in);
-					p ! new Change(bs);
-	//				println(index + " -> has send message to -> " + p.index);
-				}
-				if (!pred.isEmpty && succ.isEmpty)
-					this ! new Stop; 
-			} else {
-	//			println("LIKA INDEX " + index);
-				this ! new Stop;
-			}
+			update(out);
 		}
 		act();
       }
 	  
-	  case Change(inBits) => {
-		update(inBits);
-	//	println(index + " recieved message and updated ");
-		this ! new Stop;
-		act();
+	  case Change(outBits) => {
+		  mess += 1;
+		  out.or(outBits);
+		  println(index + " recieved message nbr: " + mess);
+		  update(out);
+		  act();
 	  }
 	  
       case Stop()  => { 
-	      controller ! new Done;
-	  //    println("node stopped: " + index);
+	      val i = index;
+	      controller ! new Done(i);
+	     println("node stopped: " + index);
 	  }
     }
   }
