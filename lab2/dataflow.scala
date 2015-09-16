@@ -9,6 +9,7 @@ case class Ready();
 case class Go();
 case class Change(in: BitSet);
 case class Done(index: Int);
+case class Update(index: Int);
 
 class Random(seed: Int) {
         var w = seed + 1;
@@ -40,9 +41,15 @@ class Controller(val cfg: Array[Vertex]) extends Actor {
         act();
       }
       
+      case Update(i) => {
+	      cfg(i) ! new Go;
+	      act();
+      }
+      
       case Done(x) => {
 	  	started -= 1;
 	  	println("DONE " + x);
+	  	cfg(x) ! new Stop;
 	  	if (started != 0) {
 	  		act();
 		} 
@@ -63,7 +70,7 @@ class Vertex(val index: Int, s: Int, val controller: Controller) extends Actor {
   val defs               = new BitSet(s);
   var in                 = new BitSet(s);
   var out                = new BitSet(s);
-
+  var newOut			 = new BitSet(s);
 			  
   def connect(that: Vertex) {
     println(this.index + "->" + that.index);
@@ -81,9 +88,8 @@ class Vertex(val index: Int, s: Int, val controller: Controller) extends Actor {
       case Go() => {
         // LAB 2: Start working with this vertex.
 		if (succ.isEmpty && pred.isEmpty) {
-// 			this ! new Stop;
 			val i = index;
- 			controller ! new Done(i);
+ 			controller ! new Done(index);
 		} else {
 			for (x <- succ){
 				out.or(x.in);
@@ -99,40 +105,22 @@ class Vertex(val index: Int, s: Int, val controller: Controller) extends Actor {
 				for (p <- pred){
 					val bs = new BitSet();
 					bs.or(in);
-					controller ! new Change(bs);
+					p ! new Change(bs);
+					controller ! new Update(p.index);
 				}
-			}
-		act();
+			}else{
+				controller ! new Done(index);
+			} 
+		  }
+		  act();
 		}
-      }
 	  
 	  case Change(outBits) => {
-		out.or(outBits);
-		var old = new BitSet(s);
-		old = in;
-		in = new BitSet();
-		in.or(outBits);	
-		in.andNot(defs);	
-		in.or(uses);
-	
-		if (!in.equals(old)) {
-			for (p <- pred){
-				val bs = new BitSet();
-				bs.or(in);
-				p ! new Change(bs);
-			}
-		} else {
-// 			this ! new Stop;
-		}
+		in.or(outBits);
 		  act();
 	  }
 	  
-      case Stop()  => { 
-/*
-	      val i = index;
-	      controller ! new Done(i);
-*/
-	  }
+      case Stop()  => {}
     }
   }
 
