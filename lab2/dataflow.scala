@@ -29,12 +29,10 @@ class Controller(val cfg: Array[Vertex]) extends Actor {
 
   // LAB 2: The controller must figure out when
   //        to terminate all actors somehow.
-
   def act() {
     react {
       case Ready() => {
         started += 1;
-//         println("controller has seen " + started);
         if (started == cfg.length) {
           for (u <- cfg)
             u ! new Go;
@@ -44,7 +42,7 @@ class Controller(val cfg: Array[Vertex]) extends Actor {
       
       case Done(x) => {
 	  	started -= 1;
-	 	println("STOPPED node = " + x + "  and left = " + started);
+	  	println("DONE " + x);
 	  	if (started != 0) {
 	  		act();
 		} 
@@ -65,8 +63,7 @@ class Vertex(val index: Int, s: Int, val controller: Controller) extends Actor {
   val defs               = new BitSet(s);
   var in                 = new BitSet(s);
   var out                = new BitSet(s);
-  var updated:Int		 = 0;
-  var mess:Int			 = 0;
+
 			  
   def connect(that: Vertex) {
     println(this.index + "->" + that.index);
@@ -74,63 +71,67 @@ class Vertex(val index: Int, s: Int, val controller: Controller) extends Actor {
     that.pred = this :: that.pred;
   }
   
-   def update(outBits : BitSet) {
-  	for (x <- succ){
-		outBits.or(x.in);
-	}
-	var old = new BitSet();
-	old = in;
-	in = new BitSet();
-	in.or(outBits);	
-	in.andNot(defs);	
-	in.or(uses);
-	
-	if (!in.equals(old)) {
-		for (p <- pred){
-			val bs = new BitSet();
-			bs.or(in);
-			p ! new Change(bs);
-			println(index + " has send message to -> " + p.index);
-		}
-		println(" updated node = " + index + " times: " + updated);
-	} else {
-		println("NOW EQUAL------- node " + index);
-		this ! new Stop;
-	}
-		   updated += 1;
-  }
-  
   def act() { 
     react {
       case Start() => {
 	      controller ! new Ready;
-	      println("started: " + index);
 	      act();
       }
 
       case Go() => {
         // LAB 2: Start working with this vertex.
-        println("Go: " + index);
 		if (succ.isEmpty && pred.isEmpty) {
-			this ! new Stop;
+// 			this ! new Stop;
+			val i = index;
+ 			controller ! new Done(i);
 		} else {
-			update(out);
-		}
+			for (x <- succ){
+				out.or(x.in);
+			}
+			var old = new BitSet();
+			old = in;
+			in = new BitSet(s);
+			in.or(out);	
+			in.andNot(defs);	
+			in.or(uses);
+	
+			if (!in.equals(old)) {
+				for (p <- pred){
+					val bs = new BitSet();
+					bs.or(in);
+					controller ! new Change(bs);
+				}
+			}
 		act();
+		}
       }
 	  
 	  case Change(outBits) => {
-		  mess += 1;
-		  out.or(outBits);
-		  println(index + " recieved message nbr: " + mess);
-		  update(out);
+		out.or(outBits);
+		var old = new BitSet(s);
+		old = in;
+		in = new BitSet();
+		in.or(outBits);	
+		in.andNot(defs);	
+		in.or(uses);
+	
+		if (!in.equals(old)) {
+			for (p <- pred){
+				val bs = new BitSet();
+				bs.or(in);
+				p ! new Change(bs);
+			}
+		} else {
+// 			this ! new Stop;
+		}
 		  act();
 	  }
 	  
       case Stop()  => { 
+/*
 	      val i = index;
 	      controller ! new Done(i);
-	     println("node stopped: " + index);
+*/
 	  }
     }
   }
