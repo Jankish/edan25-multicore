@@ -11,6 +11,7 @@ case class Change(in: BitSet);
 case class Done(index: Int);
 case class Update(index: Int);
 
+
 class Random(seed: Int) {
         var w = seed + 1;
         var z = seed * seed + seed + 2;
@@ -42,22 +43,23 @@ class Controller(val cfg: Array[Vertex]) extends Actor {
       }
       
       case Update(i) => {
-	      cfg(i) ! new Go;
+	      for(n <- cfg(i).pred) {
+	      	n ! new Go;
+	      }	
 	      act();
       }
       
       case Done(x) => {
-	  	started -= 1;
-	  	println("DONE " + x);
+	    started -= 1;
 	  	cfg(x) ! new Stop;
-	  	if (started != 0) {
-	  		act();
-		} 
+	  	act(); 
       }
 
       case Stop() => {
 	  	val end = System.currentTimeMillis();
 	  	println("T = " + (end - begin)/1e9 + " s");
+// 	  	context.stop(self);
+// 		this ! PoisonPill;
       }
     }
   }
@@ -71,6 +73,7 @@ class Vertex(val index: Int, s: Int, val controller: Controller) extends Actor {
   var in                 = new BitSet(s);
   var out                = new BitSet(s);
   var newOut			 = new BitSet(s);
+//   var old = new BitSet();
 			  
   def connect(that: Vertex) {
     println(this.index + "->" + that.index);
@@ -94,33 +97,36 @@ class Vertex(val index: Int, s: Int, val controller: Controller) extends Actor {
 			for (x <- succ){
 				out.or(x.in);
 			}
-			var old = new BitSet();
+			var old = new BitSet(s);
 			old = in;
 			in = new BitSet(s);
 			in.or(out);	
 			in.andNot(defs);	
 			in.or(uses);
-	
 			if (!in.equals(old)) {
 				for (p <- pred){
-					val bs = new BitSet();
+					val bs = new BitSet(s);
 					bs.or(in);
 					p ! new Change(bs);
-					controller ! new Update(p.index);
 				}
+				controller ! new Update(index);
+				act();
 			}else{
+// 				println(index + " has send message to controller ");
 				controller ! new Done(index);
 			} 
+			act();
 		  }
-		  act();
 		}
 	  
 	  case Change(outBits) => {
-		in.or(outBits);
-		  act();
+		out.or(outBits);
+		act();
 	  }
 	  
-      case Stop()  => {}
+      case Stop()  => {
+// 	      println(index + " ††††††††† has stopped †††††" );
+      }
     }
   }
 
@@ -211,3 +217,22 @@ object Driver {
         cfg(i).print;
   }
 }
+/*
+		case Update(i) => {
+			updateBits();
+	
+			if (!in.equals(old)) {
+				for (p <- pred){
+					val bs = new BitSet();
+					bs.or(in);
+// 					println(index + " has send message to -- " + p.index + " -- and to controller ");
+					p ! new Change(bs);
+				}
+// 				controller ! new Update(index);
+			}else{
+// 				println(index + " has send message to controller ");
+				controller ! new Done(index);
+			} 
+			act();
+	  }
+*/
