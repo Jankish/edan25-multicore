@@ -10,6 +10,7 @@ case class Go();
 case class Change(in: BitSet);
 case class Done(index: Int);
 case class Update(index: Int);
+case class UpdateVertex();
 
 
 class Random(seed: Int) {
@@ -44,22 +45,26 @@ class Controller(val cfg: Array[Vertex]) extends Actor {
       
       case Update(i) => {
 	      for(n <- cfg(i).pred) {
-	      	n ! new Go;
+	      	n ! new UpdateVertex;
 	      }	
 	      act();
       }
       
       case Done(x) => {
 	    started -= 1;
-	  	cfg(x) ! new Stop;
+	    println("Has called done node = "+ x);
+	    cfg(x) ! new Stop;
+	    if(started == 0) {
+		    for (u <- cfg) 
+	  			u ! new Stop;
+	  			this ! new Stop;
+	  	}
 	  	act(); 
       }
 
       case Stop() => {
 	  	val end = System.currentTimeMillis();
 	  	println("T = " + (end - begin)/1e9 + " s");
-// 	  	context.stop(self);
-// 		this ! PoisonPill;
       }
     }
   }
@@ -73,7 +78,6 @@ class Vertex(val index: Int, s: Int, val controller: Controller) extends Actor {
   var in                 = new BitSet(s);
   var out                = new BitSet(s);
   var newOut			 = new BitSet(s);
-//   var old = new BitSet();
 			  
   def connect(that: Vertex) {
     println(this.index + "->" + that.index);
@@ -83,49 +87,70 @@ class Vertex(val index: Int, s: Int, val controller: Controller) extends Actor {
   
   def act() { 
     react {
-      case Start() => {
+      	case Start() => {
 	      controller ! new Ready;
 	      act();
       }
-
-      case Go() => {
+	  
+	  	case Go() => {
         // LAB 2: Start working with this vertex.
-		if (succ.isEmpty && pred.isEmpty) {
-			val i = index;
- 			controller ! new Done(index);
-		} else {
-			for (x <- succ){
-				out.or(x.in);
-			}
+			if (succ.isEmpty && pred.isEmpty) {
+				val i = index;
+				controller ! new Done(index);
+			} else {
+				for (x <- succ){
+					out.or(x.in);
+				}
+				var old = new BitSet(s);
+				old = in;
+				in = new BitSet(s);
+				in.or(out);	
+				in.andNot(defs);	
+				in.or(uses);
+				
+				if (succ.isEmpty && !in.equals(old)) {
+					for (p <- pred){
+						val bs = new BitSet(s);
+						bs.or(in);
+						p ! new Change(bs);
+					}
+					controller ! new Update(index);
+					println(index + " succ empty and has send Change and called Update node -> ");
+				}
+			}  
+			act();
+	 	}			
+			
+	 	case Change(bs) => {
+			out.or(bs);
+			act();
+		}
+		
+		case UpdateVertex() => {
 			var old = new BitSet(s);
 			old = in;
 			in = new BitSet(s);
 			in.or(out);	
 			in.andNot(defs);	
 			in.or(uses);
-			if (!in.equals(old)) {
+			if (!in.equals(old) && !pred.isEmpty) {
 				for (p <- pred){
+					println("Node inside the house + " + index);
 					val bs = new BitSet(s);
 					bs.or(in);
 					p ! new Change(bs);
 				}
 				controller ! new Update(index);
-				act();
-			}else{
-// 				println(index + " has send message to controller ");
+				println(index + " IS NOT Equal and has send Change and Update node ** ");
+			} else { 
 				controller ! new Done(index);
+					println(index + " IS Equal and has send Done node -> ");				
 			} 
-			act();
-		  }
-		}
-	  
-	  case Change(outBits) => {
-		out.or(outBits);
-		act();
+			act(); 
 	  }
 	  
       case Stop()  => {
-// 	      println(index + " ††††††††† has stopped †††††" );
+	      println(index + " ††††††††† has stopped †††††" );
       }
     }
   }
@@ -217,22 +242,3 @@ object Driver {
         cfg(i).print;
   }
 }
-/*
-		case Update(i) => {
-			updateBits();
-	
-			if (!in.equals(old)) {
-				for (p <- pred){
-					val bs = new BitSet();
-					bs.or(in);
-// 					println(index + " has send message to -- " + p.index + " -- and to controller ");
-					p ! new Change(bs);
-				}
-// 				controller ! new Update(index);
-			}else{
-// 				println(index + " has send message to controller ");
-				controller ! new Done(index);
-			} 
-			act();
-	  }
-*/
