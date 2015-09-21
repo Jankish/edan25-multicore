@@ -8,22 +8,21 @@ case class Stop();
 case class Ready();
 case class Go();
 case class Change(in: BitSet);
-case class Done(index: Int);
-case class Update(index: Int);
-case class UpdateVertex();
+case class Done();
+case class UpdateNode();
+case class Update();
 
 
 class Random(seed: Int) {
-        var w = seed + 1;
-        var z = seed * seed + seed + 2;
+    var w = seed + 1;
+    var z = seed * seed + seed + 2;
 
-        def nextInt() =
-        {
-                z = 36969 * (z & 65535) + (z >> 16);
-                w = 18000 * (w & 65535) + (w >> 16);
+    def nextInt() = {
+		z = 36969 * (z & 65535) + (z >> 16);
+		w = 18000 * (w & 65535) + (w >> 16);
 
-                (z << 16) + w;
-        }
+		(z << 16) + w;
+	}
 }
 
 class Controller(val cfg: Array[Vertex]) extends Actor {
@@ -34,36 +33,36 @@ class Controller(val cfg: Array[Vertex]) extends Actor {
   //        to terminate all actors somehow.
   def act() {
     react {
-      case Ready() => {
-        started += 1;
-        if (started == cfg.length) {
-          for (u <- cfg)
-            u ! new Go;
-        }
-        act();
-      }
-      
-      case Update(i) => {
-	      for(n <- cfg(i).pred) {
-	      	n ! new UpdateVertex;
-	      }	
-	      act();
-      }
-      
-      case Done(x) => {
-	    started -= 1;
-	    println("Has called done node = "+ x);
-	    cfg(x) ! new Stop;
-	    if(started == 0) {
-		    for (u <- cfg) 
-	  			u ! new Stop;
-	  			this ! new Stop;
-	  	}
-	  	act(); 
+    	case Ready() => {
+        	started += 1;
+			if (started == cfg.length) {
+				for (u <- cfg) {
+					u ! new Go;
+				}
+        	}
+        	act();
+		}
+		case Update() => started += 1;
+		
+		case UpdateNode() => {
+			sender ! new Go;
+			act();
+	    }
+		
+		case Done() => {
+			started -= 1;
+			if(started == 0) {
+				for (u <- cfg) {
+					u ! new Stop;
+				}	
+				this ! new Stop;
+			}
+			act(); 
       }
 
       case Stop() => {
 	  	val end = System.currentTimeMillis();
+
 	  	println("T = " + (end - begin)/1e9 + " s");
       }
     }
@@ -77,7 +76,7 @@ class Vertex(val index: Int, s: Int, val controller: Controller) extends Actor {
   val defs               = new BitSet(s);
   var in                 = new BitSet(s);
   var out                = new BitSet(s);
-  var newOut			 = new BitSet(s);
+  var listed:Boolean 	 = false;
 			  
   def connect(that: Vertex) {
     println(this.index + "->" + that.index);
@@ -90,68 +89,37 @@ class Vertex(val index: Int, s: Int, val controller: Controller) extends Actor {
       	case Start() => {
 	      controller ! new Ready;
 	      act();
-      }
+      	}
 	  
-	  	case Go() => {
-        // LAB 2: Start working with this vertex.
-			if (succ.isEmpty && pred.isEmpty) {
-				val i = index;
-				controller ! new Done(index);
-			} else {
-				for (x <- succ){
-					out.or(x.in);
-				}
-				var old = new BitSet(s);
-				old = in;
-				in = new BitSet(s);
-				in.or(out);	
-				in.andNot(defs);	
-				in.or(uses);
-				
-				if (succ.isEmpty && !in.equals(old)) {
-					for (p <- pred){
-						val bs = new BitSet(s);
-						bs.or(in);
-						p ! new Change(bs);
-					}
-					controller ! new Update(index);
-					println(index + " succ empty and has send Change and called Update node -> ");
-				}
-			}  
-			act();
-	 	}			
-			
 	 	case Change(bs) => {
+		 	listed = true;
 			out.or(bs);
+// 			controller ! new UpdateNode;
 			act();
 		}
 		
-		case UpdateVertex() => {
+		case Go() => {
 			var old = new BitSet(s);
 			old = in;
 			in = new BitSet(s);
 			in.or(out);	
 			in.andNot(defs);	
 			in.or(uses);
-			if (!in.equals(old) && !pred.isEmpty) {
+			if(!old.equals(in) || listed) {
 				for (p <- pred){
-					println("Node inside the house + " + index);
 					val bs = new BitSet(s);
 					bs.or(in);
-					p ! new Change(bs);
-				}
-				controller ! new Update(index);
-				println(index + " IS NOT Equal and has send Change and Update node ** ");
-			} else { 
-				controller ! new Done(index);
-					println(index + " IS Equal and has send Done node -> ");				
-			} 
+					p ! new Change(bs);	
+					controller ! new Update;
+				}	
+				controller ! new UpdateNode;
+				act();
+			}
+			controller ! new Done();
 			act(); 
-	  }
+	 	}
 	  
-      case Stop()  => {
-	      println(index + " ††††††††† has stopped †††††" );
-      }
+	 	case Stop()  => {}
     }
   }
 
@@ -164,8 +132,8 @@ class Vertex(val index: Int, s: Int, val controller: Controller) extends Actor {
   }
 
   def print = {
-    printSet("use", index, uses);
-    printSet("def", index, defs);
+    printSet("uses", index, uses);
+    printSet("defs", index, defs);
     printSet("in", index, in);
     printSet("out", index, out);
     println("");
@@ -236,9 +204,11 @@ object Driver {
 
     for (i <- 0 until nvertex)
       cfg(i) ! new Start;
-
+	  
     if (print != 0)
-      for (i <- 0 until nvertex)
-        cfg(i).print;
+    	for (i <- 0 until nvertex){
+	    	if(!cfg(i).listed)
+				cfg(i).print;
+		}  	
   }
 }
