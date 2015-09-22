@@ -54,14 +54,11 @@ class Controller(val cfg: Array[Vertex]) extends Actor {
             u ! new Stop;
           }	
           this ! new Stop;
-          end = System.currentTimeMillis();
-
           for (i <- 0 until cfg.length){
             cfg(i).print;
           }
-
+          end = System.currentTimeMillis();
           println("T = " + (end - begin)/1e9 + " s");
-
         } else {
           act(); 
         }
