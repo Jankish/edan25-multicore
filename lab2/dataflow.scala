@@ -9,71 +9,62 @@ case class Ready();
 case class Go();
 case class Change(in: BitSet);
 case class Done();
-case class UpdateNode();
-case class Update(i:Int);
-case class ChangeListed(moreWork:Boolean)
-
+case class Update();
 
 class Random(seed: Int) {
-    var w = seed + 1;
-    var z = seed * seed + seed + 2;
+  var w = seed + 1;
+  var z = seed * seed + seed + 2;
 
-    def nextInt() = {
-		z = 36969 * (z & 65535) + (z >> 16);
-		w = 18000 * (w & 65535) + (w >> 16);
+  def nextInt() = {
+    z = 36969 * (z & 65535) + (z >> 16);
+    w = 18000 * (w & 65535) + (w >> 16);
 
-		(z << 16) + w;
-	}
+    (z << 16) + w;
+  }
 }
 
 class Controller(val cfg: Array[Vertex]) extends Actor {
   var started = 0;
   val begin   = System.currentTimeMillis();
   var end = 0L;
-  var isFinished:Boolean = false;
-  var live:Int	= 0;
-  var allStarted:Boolean = false;
 
   // LAB 2: The controller must figure out when
   //        to terminate all actors somehow.
   def act() {
     react {
-    	case Ready() => {
-        	started += 1;
-			if (started == cfg.length) {
-				for (u <- cfg) {
-					u ! new Go;
-				}
-				allStarted = true;
-        	}
-        	act();
-		}
-		
-		case Update(i) => {
-			live += 1;
-			sender ! new Go;
-			act();
-		}
-		
-		case Done() => {
-// 			live -= 1;
-			if(live == 0 && allStarted) {
-				for (u <- cfg) {
-					u ! new Stop;
-				}	
-				this ! new Stop;
-				isFinished = true;
-				end = System.currentTimeMillis();
-				
-				for (i <- 0 until cfg.length){
-					cfg(i).print;
-				}
-				
-				println("T = " + (end - begin)/1e9 + " s");
-				
-			} else {
-				act(); 
- 			}
+      case Ready() => {
+        started += 1;
+        if (started == cfg.length) {
+          for (u <- cfg) {
+            u ! new Go;
+          }
+        }
+        act();
+      }
+
+      case Update() => {
+        sender ! new Go;
+        act();
+      }
+
+      case Done() => {
+        started -= 1;
+        if(started == 0) {
+          for (u <- cfg) {
+            u ! new Stop;
+          }	
+          this ! new Stop;
+          end = System.currentTimeMillis();
+
+          for (i <- 0 until cfg.length){
+            cfg(i).print;
+          }
+
+          println("T = " + (end - begin)/1e9 + " s");
+
+        } else {
+          act(); 
+        }
       }
 
       case Stop() => {}
@@ -88,65 +79,59 @@ class Vertex(val index: Int, s: Int, val controller: Controller) extends Actor {
   val defs               = new BitSet(s);
   var in                 = new BitSet(s);
   var out                = new BitSet(s);
-  var listed:Boolean 	 = false;
-  var count:Int 		 = 0;
-			  
+
   def connect(that: Vertex) {
     println(this.index + "->" + that.index);
     this.succ = that :: this.succ;
     that.pred = this :: that.pred;
   }
-  
+
   def act() { 
     react {
-      	case Start() => {
-	      controller ! new Ready;
-	      act();
-      	}
-	  
-		// LAB 2: Start working with this vertex.
-		case Go() => {
-			count += 1;
-			update(true);
-			act();
-	 	}
-	 	
-	 	case Change(bs) => {
-		 	listed = true;
-		 	out.or(bs);
-		 	update(true);
-			act();
-		}
-	 	
-	 	case Stop()  => {}
+      case Start() => {
+        controller ! new Ready;
+        act();
+      }
+
+      // LAB 2: Start working with this vertex.
+      case Go() => {
+        update(true);
+        act();
+      }
+
+      case Change(bs) => {
+        out.or(bs);
+        update(false);
+        act();
+      }
+
+      case Stop()  => {}
     }
-    }
-    
-    def update(more_work: Boolean) {
-	    val old = in;
-		in = new BitSet();
-		in.or(out);	
-		in.andNot(defs);	
-		in.or(uses);
-		val i = index;
-		if(!old.equals(in) || more_work) {
-			for (p <- pred){
-				val bs = new BitSet();
-				bs.or(in);
-				p ! new Change(bs);	
-				controller ! new Update(i);
-			}
-		}	
-		listed = false;
-		controller ! new Done(); 
-  	}
+  }
+
+  def update(more_work: Boolean) {
+    val old = in;
+    in = new BitSet();
+    in.or(out);	
+    in.andNot(defs);	
+    in.or(uses);
+    if(!old.equals(in) || more_work) {
+      for (p <- pred){
+        val bs = new BitSet();
+        bs.or(in);
+        p ! new Change(bs);	
+        controller ! new Update();
+      }
+    }	
+    controller ! new Done(); 
+  }
 
   def printSet(name: String, index: Int, set: BitSet) {
     System.out.print(name + "[" + index + "] = { ");
     for (i <- 0 until set.size)
       if (set.get(i))
         System.out.print("" + i + " ");
-    println("}");
+      println("}");
   }
 
   def print = {
@@ -188,10 +173,10 @@ object Driver {
         if (j % 4 != 0) {
           if (!cfg(i).defs.get(s))
             cfg(i).uses.set(s);
-        } else {
-          if (!cfg(i).uses.get(s))
-            cfg(i).defs.set(s);
-        }
+          } else {
+            if (!cfg(i).uses.get(s))
+              cfg(i).defs.set(s);
+          }
       }
     }
   }
@@ -211,16 +196,16 @@ object Driver {
     for (i <- 0 until nvertex)
       cfg(i) = new Vertex(i, nsym, controller);
 
-    makeCFG(cfg);
-    println("generating usedefs...");
-    makeUseDef(cfg);
+      makeCFG(cfg);
+      println("generating usedefs...");
+      makeUseDef(cfg);
 
-    println("starting " + nvertex + " actors...");
+      println("starting " + nvertex + " actors...");
 
-    for (i <- 0 until nvertex)
-      cfg(i).start;
+      for (i <- 0 until nvertex)
+        cfg(i).start;
 
-    for (i <- 0 until nvertex)
-      cfg(i) ! new Start;
+        for (i <- 0 until nvertex)
+          cfg(i) ! new Start;
   }
 }

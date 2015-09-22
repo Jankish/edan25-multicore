@@ -4,18 +4,18 @@
 #NACTIVE	= 100
 #PRINT   = 1
 
-NSYM	= 100
+NSYM	= 1000
 NVERTEX	= 10
 MAXSUCC	= 4
 NACTIVE	= 100
-PRINT   = 0 
+PRINT   = 1
 
 all:
 	@mkdir -p classes
 	#scalac -g:vars -d classes dataflow.scala
 	#scalac -deprecation -d classes dataflow.scala
 	scalac -deprecation -optimise -d classes dataflow.scala
-	scala -classpath classes Driver $(NSYM) $(NVERTEX) $(MAXSUCC) $(NACTIVE) $(PRINT)
+	scala -classpath classes Driver $(NSYM) $(NVERTEX) $(MAXSUCC) $(NACTIVE) $(PRINT) > output.txt
 
 run:
-	scala -classpath classes Driver $(NSYM) $(NVERTEX) $(MAXSUCC) $(NACTIVE) $(PRINT)
+	scala -classpath classes Driver $(NSYM) $(NVERTEX) $(MAXSUCC) $(NACTIVE) $(PRINT) 
