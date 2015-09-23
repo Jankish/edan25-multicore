@@ -21,29 +21,14 @@ void par_sort(
 	size_t		s,	// Size of each element.
 	int		(*cmp)(const void*, const void*)) // Behaves like strcmp
 {
-	
-	
-	
-	
-	
-	
-	
-	
+
 }
 
 static int cmp(const void* ap, const void* bp)
 {	
 	/* you need to modify this function to compare doubles. */
-//	assert(*ap != NULL);
-//	assert(*bp != NULL);
 	const double*	a = ap;
 	const double*	b = bp;
-//	if (*a > *b)
-//		return 1;
-//	else if (*a < *b)
-//		return -1;
-//	else
-//		return 0;
 	return *a - *b;
 }
 
