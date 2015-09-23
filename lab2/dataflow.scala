@@ -9,7 +9,7 @@ case class Ready();
 case class Go();
 case class Change(in: BitSet);
 case class Done();
-case class Update();
+case class Update(n: Vertex);
 
 class Random(seed: Int) {
   var w = seed + 1;
@@ -42,8 +42,8 @@ class Controller(val cfg: Array[Vertex]) extends Actor {
         act();
       }
 
-      case Update() => {
-        sender ! new Go;
+      case Update(n) => {
+        n ! new Go;
         act();
       }
 
@@ -98,7 +98,6 @@ class Vertex(val index: Int, s: Int, val controller: Controller) extends Actor {
 
       case Change(bs) => {
         out.or(bs);
-        update(false);
         act();
       }
 
@@ -117,7 +116,7 @@ class Vertex(val index: Int, s: Int, val controller: Controller) extends Actor {
         val bs = new BitSet();
         bs.or(in);
         p ! new Change(bs);	
-        controller ! new Update();
+        controller ! new Update(p);
       }
     }	
     controller ! new Done(); 
