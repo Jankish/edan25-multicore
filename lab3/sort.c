@@ -21,18 +21,35 @@ void par_sort(
 	size_t		s,	// Size of each element.
 	int		(*cmp)(const void*, const void*)) // Behaves like strcmp
 {
+	
+	
+	
+	
+	
+	
+	
+	
 }
 
 static int cmp(const void* ap, const void* bp)
 {	
 	/* you need to modify this function to compare doubles. */
-
-	return 0; 
+//	assert(*ap != NULL);
+//	assert(*bp != NULL);
+	const double*	a = ap;
+	const double*	b = bp;
+//	if (*a > *b)
+//		return 1;
+//	else if (*a < *b)
+//		return -1;
+//	else
+//		return 0;
+	return *a - *b;
 }
 
 int main(int ac, char** av)
 {
-	int		n = 2000000;
+	int		n = 20;
 	int		i;
 	double*		a;
 	double		start, end;
@@ -45,6 +62,7 @@ int main(int ac, char** av)
 	a = malloc(n * sizeof a[0]);
 	for (i = 0; i < n; i++)
 		a[i] = rand();
+	
 
 	start = sec();
 
@@ -54,6 +72,10 @@ int main(int ac, char** av)
 	qsort(a, n, sizeof a[0], cmp);
 #endif
 
+	printf("vector = \n");
+	for (int i = 0; i < n; i++)
+		printf(" %*lf\n", 30, *a++);
+	
 	end = sec();
 
 	printf("%1.2f s\n", end - start);
