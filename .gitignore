@@ -2,6 +2,7 @@
 *.class
 out
 src
-.idea
-.txt
-.o
+*.idea
+*.txt
+*.o
+*~
