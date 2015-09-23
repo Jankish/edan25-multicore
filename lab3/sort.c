@@ -10,7 +10,9 @@
 
 static double sec(void)
 {
-	return 0;
+	struct timeval t;
+	gettimeofday(&t, NULL);
+	return (1.0e-6*t.tv_usec + t.tv_sec);
 }
 
 void par_sort(
