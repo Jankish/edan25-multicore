@@ -8,15 +8,23 @@
 #include <sys/time.h>
 #include <unistd.h>
 
-static int thread_count = 4;
+#define NUM_THREAD	(1)
+
+int counter = 0;
 
 static double sec(void)
 {
 	struct timeval t;
 	gettimeofday(&t, NULL);
-	return(t.tv_usec);
+	return (t.tv_usec);
 	//return (1.0e-6*t.tv_usec + t.tv_sec);
 }
+
+void sort_seg(data_t* data)
+{
+	data
+}
+
 
 void par_sort(
 	void*		base,	// Array to sort.
@@ -24,33 +32,35 @@ void par_sort(
 	size_t		s,	// Size of each element.
 	int		(*cmp)(const void*, const void*)) // Behaves like strcmp
 {
-	if (thread_count > 2) {
-		// Find new pivot
-		// start two new threads and make the threads call par_sort
-		// thread_count - 2
-		// (left and right)
-	} else if (thread_count > 0) {
-		// Find new pivot
-		// start 1 new thread 
-		// thread_count - 1
-	} 
-	//qsort(base, n, s, cmp);
-	//join
-	//thread_count + 1
+	counter += 1;
+	//calc parameters
+	if (counter < NUM_THREAD) {
+		//skapa fler trådar
+	} else {
+		//qsort
+	}
+
+
 }
+
+struct data {
+	void* base;
+	size_t n;
+	size_t s;
+	int (*cmp)(const void*, const void*);
+	int thread_id;
+};
 
 static int cmp(const void* ap, const void* bp)
 {	
 	/* you need to modify this function to compare doubles. */
-	const double*	a = ap;
-	const double*	b = bp;
-	return *a - *b;
-//	return 0;
+
+	return 0; 
 }
 
 int main(int ac, char** av)
 {
-	int		n = 20;
+	int		n = 2000000;
 	int		i;
 	double*		a;
 	double		start, end;
@@ -63,24 +73,18 @@ int main(int ac, char** av)
 	a = malloc(n * sizeof a[0]);
 	for (i = 0; i < n; i++)
 		a[i] = rand();
-	
 
 	start = sec();
 
-//#ifdef PARALLEL
-//	par_sort(a, n, sizeof a[0], cmp);
-//#else
-	qsort(a, n, sizeof a[0], cmp);
-//#endif
+#ifdef PARALLEL
+	par_sort(a, n, sizeof a[0], cmp);
+#else
+	//qsort(a, n, sizeof a[0], cmp);
+#endif
 
-	printf(" %*lf\n", 20, *(a+10));
-	printf("vector = \n");
-	for (int i = 0; i < n; i++)
-		printf(" %*lf\n", 30, *a++);
-	
 	end = sec();
 
-	printf("%1.2f micro s\n", end - start);
+	printf("%1.2f s\n", end - start);
 
 	free(a);
 

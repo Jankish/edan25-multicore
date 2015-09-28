@@ -8,7 +8,8 @@
 #include <sys/time.h>
 #include <unistd.h>
 
-static size_t thread_count = 4;
+//static size_t thread_count = 4;
+_Atomic int thread_count = 4;
 static void in_sort(
 		    void*		base,	// Array to sort.
 		    size_t		n,	// Number of elements in base.
