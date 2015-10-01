@@ -134,25 +134,25 @@ void liveness(cfg_t* cfg)
 		u->listed = true;
 	}
 
-	while ((u = remove_first(&worklist)) != NULL) {
-		u->listed = false;
+	while ((u = remove_first(&worklist)) != NULL) {		//remove vertex u from list
+		u->listed = false;				//listed false
 
-		reset(u->set[OUT]);
+		reset(u->set[OUT]);				//reset out in vertex u
 
-		for (j = 0; j < u->nsucc; ++j)
-			or(u->set[OUT], u->set[OUT], u->succ[j]->set[IN]);
-
-		prev = u->prev;
-		u->prev = u->set[IN];
+		for (j = 0; j < u->nsucc; ++j)			//for all succ of vertex u
+			or(u->set[OUT], u->set[OUT], u->succ[j]->set[IN]); //  u = u | u->succ
+								//update out set against in set of succ
+		prev = u->prev;					//a set of vertex u in which to
+		u->prev = u->set[IN];				//save the old in-set
 		u->set[IN] = prev;
 
 		/* in our case liveness information... */
 		propagate(u->set[IN], u->set[OUT], u->set[DEF], u->set[USE]);
-
-		if (u->pred != NULL && !equal(u->prev, u->set[IN])) {
-			p = h = u->pred;
+// porpagate --  in->a[i] = (out->a[i] & ~def->a[i]) | use->a[i];
+		if (u->pred != NULL && !equal(u->prev, u->set[IN])) {	// have an update
+			p = h = u->pred;			//to pred vertex
 			do {
-				v = p->data;
+				v = p->data;			//get pred-vertex of u-vertex
 				if (!v->listed) {
 					v->listed = true;
 					insert_last(&worklist, v);
@@ -160,7 +160,7 @@ void liveness(cfg_t* cfg)
 
 				p = p->succ;
 
-			} while (p != h);
+			} while (p != h);		//end of the u:s succ list
 		}
 	}
 }
