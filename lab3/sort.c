@@ -30,7 +30,7 @@ static double sec(void)
 	
 	gettimeofday(&tv, NULL);
 	
-	return tv.tv_sec + 1e-3 * tv.tv_usec;
+	return tv.tv_sec + 1e-6 * tv.tv_usec;
 }
 
 static void swap(double* a, int i, int j)
@@ -59,7 +59,7 @@ static int partition(double a[], int low, int hi)
 static void* deep_sort(void* d_segment)
 {
 	s_data* data = (s_data*)d_segment;
-	printf("thead tid = %d\n", data->tid);
+//	printf("thead tid = %d\n", data->tid);
 	qsort(data->part, data->size, data->e_size, data->cmp);
 	return NULL;
 }
@@ -147,7 +147,7 @@ static int cmp(const void* ap, const void* bp)
 
 int main(int ac, char** av)
 {
-	int		n = 5500; // equaly fast at 20k entries
+	int		n = 50000; // equaly fast at 20k entries
 	int		i;
 	double*		a, *b;
 	double		start, end;
@@ -172,7 +172,7 @@ int main(int ac, char** av)
 //	for (int i = 0; i < n; i++)
 //		printf(" %*lf\n", 30, a[i]);
 	
-	printf("%8.3f millisec s\n", (end - start));
+	printf("%3.6f s\n", (end - start));
 //#else
 	printf("\nSEQUENTIAL SORT\n\n");
 	start = sec();
@@ -182,7 +182,7 @@ int main(int ac, char** av)
 //	for (int i = 0; i < n; i++)
 //		printf(" %*lf\n", 30, b[i]);
 	
-	printf("%8.3f millisec s\n", (end - start));
+	printf("%3.6f s\n", (end - start));
 //#endif
 
 	free(a);
