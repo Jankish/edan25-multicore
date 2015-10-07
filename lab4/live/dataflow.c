@@ -11,6 +11,7 @@
 
 typedef struct vertex_t	vertex_t;
 typedef struct task_t	task_t;
+static int nthread = 4;
 
 /* cfg_t: a control flow graph. */
 struct cfg_t {
@@ -28,6 +29,8 @@ struct vertex_t {
 	vertex_t**		succ;		/* successor vertices 		*/
 	list_t*			pred;		/* predecessor vertices		*/
 	bool			listed;		/* on worklist			*/
+	pthread_mutex_t mutex;
+	pthread_cond_t cond;
 };
 
 static void clean_vertex(vertex_t* v);
@@ -80,6 +83,8 @@ static void init_vertex(vertex_t* v, size_t index, size_t nsymbol, size_t max_su
 		v->set[i] = new_set(nsymbol);
 
 	v->prev = new_set(nsymbol);
+	pthread_mutex_init(&v->mutex, NULL);
+	pthread_cond_init(&v->cond, NULL);
 }
 
 void free_cfg(cfg_t* cfg)
@@ -114,41 +119,51 @@ void setbit(cfg_t* cfg, size_t v, set_type_t type, size_t index)
 	set(cfg->vertex[v].set[type], index);
 }
 
-void liveness(cfg_t* cfg)
+struct task_t {
+	int index;
+	list_t* worklist;
+};
+
+
+void* compute(void* data)
 {
+	/* compute on u */
+	task_t* task = (task_t*) data;
+	list_t* worklist = task->worklist;
+	int index	= task->index;
 	vertex_t*	u;
 	vertex_t*	v;
 	set_t*		prev;
-	size_t		i;
 	size_t		j;
-	list_t*		worklist;
 	list_t*		p;
 	list_t*		h;
-
-	worklist = NULL;
-
-	for (i = 0; i < cfg->nvertex; ++i) {
-		u = &cfg->vertex[i];
-
-		insert_last(&worklist, u);
-		u->listed = true;
-	}
-
+	
+	printf("thread id = %d\n", index);
+	
 	while ((u = remove_first(&worklist)) != NULL) {		//remove vertex u from list
 		u->listed = false;				//listed false
-
+		
 		reset(u->set[OUT]);				//reset out in vertex u
-
+		
 		for (j = 0; j < u->nsucc; ++j)			//for all succ of vertex u
+			
+		
+			
+			
+			
 			or(u->set[OUT], u->set[OUT], u->succ[j]->set[IN]); //  u = u | u->succ
-								//update out set against in set of succ
+		
+		
+		
+		
+		//update out set against in set of succ
 		prev = u->prev;					//a set of vertex u in which to
 		u->prev = u->set[IN];				//save the old in-set
 		u->set[IN] = prev;
-
+		
 		/* in our case liveness information... */
 		propagate(u->set[IN], u->set[OUT], u->set[DEF], u->set[USE]);
-// porpagate --  in->a[i] = (out->a[i] & ~def->a[i]) | use->a[i];
+		// porpagate --  in->a[i] = (out->a[i] & ~def->a[i]) | use->a[i];
 		if (u->pred != NULL && !equal(u->prev, u->set[IN])) {	// have an update
 			p = h = u->pred;			//to pred vertex
 			do {
@@ -157,11 +172,42 @@ void liveness(cfg_t* cfg)
 					v->listed = true;
 					insert_last(&worklist, v);
 				}
-
+				
 				p = p->succ;
-
+				
 			} while (p != h);		//end of the u:s succ list
 		}
+	}
+	return NULL;
+}
+
+
+void liveness(cfg_t* cfg)
+{
+	vertex_t*	u;
+	size_t		i;
+	list_t*		worklist;
+	
+	pthread_t threads[nthread];
+	int status[nthread];
+	
+	worklist = NULL;
+
+	for (i = 0; i < cfg->nvertex; ++i) {
+		u = &cfg->vertex[i];
+
+		insert_last(&worklist, u);
+		u->listed = true;
+	}
+	
+	for(int i = 0; i < nthread; ++i){
+		task_t* ts = malloc(sizeof(task_t));
+		ts->worklist = worklist;
+		ts->index = i;
+//		printf("i = %d\n", i);
+		status[i] = pthread_create(&threads[i], NULL, compute, (void*)ts);
+		if (status[i] != 0)
+			printf("the shit has gone wrong!!\n");
 	}
 }
 
