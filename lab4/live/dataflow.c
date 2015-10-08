@@ -10,9 +10,7 @@
 #include "set.h"
 
 typedef struct vertex_t	vertex_t;
-typedef struct task_t	task_t;
-static int nthread = 4;
-
+static size_t nthread = 2;
 /* cfg_t: a control flow graph. */
 struct cfg_t {
 	size_t			nvertex;	/* number of vertices		*/
@@ -29,9 +27,12 @@ struct vertex_t {
 	vertex_t**		succ;		/* successor vertices 		*/
 	list_t*			pred;		/* predecessor vertices		*/
 	bool			listed;		/* on worklist			*/
-	pthread_mutex_t mutex;
-	pthread_cond_t cond;
+	pthread_mutex_t		mutex;
 };
+
+//typedef struct thread_struct {
+//	list_t *	worklist;
+//}thread_struct;
 
 static void clean_vertex(vertex_t* v);
 static void init_vertex(vertex_t* v, size_t index, size_t nsymbol, size_t max_succ);
@@ -84,7 +85,6 @@ static void init_vertex(vertex_t* v, size_t index, size_t nsymbol, size_t max_su
 
 	v->prev = new_set(nsymbol);
 	pthread_mutex_init(&v->mutex, NULL);
-	pthread_cond_init(&v->cond, NULL);
 }
 
 void free_cfg(cfg_t* cfg)
@@ -119,94 +119,101 @@ void setbit(cfg_t* cfg, size_t v, set_type_t type, size_t index)
 	set(cfg->vertex[v].set[type], index);
 }
 
-struct task_t {
-	int index;
-	list_t* worklist;
-};
 
-
-void* compute(void* data)
+void* computeIn(void* data)
 {
-	/* compute on u */
-	task_t* task = (task_t*) data;
-	list_t* worklist = task->worklist;
-	int index	= task->index;
-	vertex_t*	u;
+	vertex_t*	u = NULL;
 	vertex_t*	v;
 	set_t*		prev;
 	size_t		j;
+	list_t*		worklist = (list_t*) data;
 	list_t*		p;
 	list_t*		h;
-	
-	printf("thread id = %d\n", index);
-	
-	while ((u = remove_first(&worklist)) != NULL) {		//remove vertex u from list
-		u->listed = false;				//listed false
+
+	while ((u = remove_first(&worklist)) != NULL) {
+		pthread_mutex_lock(&u->mutex);
+		u->listed = false;
+		printf("u removed\n");
+		reset(u->set[OUT]);
 		
-		reset(u->set[OUT]);				//reset out in vertex u
-		
-		for (j = 0; j < u->nsucc; ++j)			//for all succ of vertex u
-			
-		
-			
-			
-			
-			or(u->set[OUT], u->set[OUT], u->succ[j]->set[IN]); //  u = u | u->succ
-		
-		
-		
-		
-		//update out set against in set of succ
-		prev = u->prev;					//a set of vertex u in which to
-		u->prev = u->set[IN];				//save the old in-set
+		for (j = 0; j < u->nsucc; ++j) {
+//			pthread_mutex_lock(&(u->succ[j])->mutex);
+			or(u->set[OUT], u->set[OUT], u->succ[j]->set[IN]);
+//			pthread_mutex_unlock(&(u->succ[j])->mutex);
+		}
+		prev = u->prev;
+		u->prev = u->set[IN];
 		u->set[IN] = prev;
 		
 		/* in our case liveness information... */
 		propagate(u->set[IN], u->set[OUT], u->set[DEF], u->set[USE]);
-		// porpagate --  in->a[i] = (out->a[i] & ~def->a[i]) | use->a[i];
-		if (u->pred != NULL && !equal(u->prev, u->set[IN])) {	// have an update
-			p = h = u->pred;			//to pred vertex
+		
+		if (u->pred != NULL && !equal(u->prev, u->set[IN])) {
+			p = h = u->pred;
 			do {
-				v = p->data;			//get pred-vertex of u-vertex
+				v = p->data;
+//				pthread_mutex_lock(&v->mutex);
 				if (!v->listed) {
 					v->listed = true;
 					insert_last(&worklist, v);
 				}
 				
 				p = p->succ;
-				
-			} while (p != h);		//end of the u:s succ list
+//				pthread_mutex_unlock(&v->mutex);
+			} while (p != h);
 		}
+		pthread_mutex_unlock(&u->mutex);
 	}
 	return NULL;
 }
+
 
 
 void liveness(cfg_t* cfg)
 {
 	vertex_t*	u;
 	size_t		i;
-	list_t*		worklist;
+	size_t		j;
+//	list_t*		worklist;
+	list_t*		w;
 	
+	w = NULL;
+//	worklist = NULL;
+	size_t status[nthread];
 	pthread_t threads[nthread];
-	int status[nthread];
+	list_t* work[nthread];
+
+//	for (i = 0; i < cfg->nvertex; ++i) {
+//		u = &cfg->vertex[i];
+//		insert_last(&worklist, u);
+//		u->listed = true;
+//	}
 	
-	worklist = NULL;
-
-	for (i = 0; i < cfg->nvertex; ++i) {
-		u = &cfg->vertex[i];
-
-		insert_last(&worklist, u);
-		u->listed = true;
+	for (i = 0; i < nthread; ++i){
+		size_t p = cfg->nvertex / nthread;
+		printf("p = %zu\n", p);
+		size_t r = (j + 1) * p;
+		printf("r = %zu\n", r);
+		for (j = i * p; j < r; ++j) {
+			u = &cfg->vertex[j];
+			insert_last(&work[i], u);
+			u->listed = true;
+		}
+		work[i] = w;
+		w = NULL;
+		printf("i = %zu  j = %zu\n",	 i, j);
 	}
 	
-	for(int i = 0; i < nthread; ++i){
-		task_t* ts = malloc(sizeof(task_t));
-		ts->worklist = worklist;
-		ts->index = i;
-//		printf("i = %d\n", i);
-		status[i] = pthread_create(&threads[i], NULL, compute, (void*)ts);
+	for(i = 0; i < nthread; ++i){
+		status[i] = pthread_create(&threads[i], NULL, computeIn, (void*) &work[i]);
 		if (status[i] != 0)
+			printf("the shit has gone wrong!!\n");
+	}
+
+	for(int i = 0; i < nthread; ++i){
+		if (status[i] == 0)
+			pthread_join(threads[i], NULL);
+		else
 			printf("the shit has gone wrong!!\n");
 	}
 }
