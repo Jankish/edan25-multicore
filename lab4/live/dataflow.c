@@ -10,7 +10,7 @@
 #include "set.h"
 
 typedef struct vertex_t	vertex_t;
-static size_t nthread = 4;
+static size_t nthread = 16;
 /* cfg_t: a control flow graph. */
 struct cfg_t {
 	size_t			nvertex;	/* number of vertices		*/
@@ -29,10 +29,6 @@ struct vertex_t {
 	bool			listed;		/* on worklist			*/
 	pthread_mutex_t		mutex;
 };
-
-//typedef struct thread_struct {
-//	list_t *	worklist;
-//}thread_struct;
 
 static void clean_vertex(vertex_t* v);
 static void init_vertex(vertex_t* v, size_t index, size_t nsymbol, size_t max_succ);
@@ -129,11 +125,10 @@ void* computeIn(void* data)
 	list_t*		worklist;
 	list_t*		p;
 	list_t*		h;
-	printf("Thread has called me!!!!!\n");
 	worklist = (list_t*) data;
 
 	while ((u = remove_first(&worklist)) != NULL) {
-		pthread_mutex_lock(&u->mutex);
+//		pthread_mutex_lock(&u->mutex);
 		u->listed = false;
 		reset(u->set[OUT]);
 		
@@ -148,7 +143,6 @@ void* computeIn(void* data)
 		
 		/* in our case liveness information... */
 		propagate(u->set[IN], u->set[OUT], u->set[DEF], u->set[USE]);
-		
 		if (u->pred != NULL && !equal(u->prev, u->set[IN])) {
 			p = h = u->pred;
 			do {
@@ -163,7 +157,7 @@ void* computeIn(void* data)
 				pthread_mutex_unlock(&v->mutex);
 			} while (p != h);
 		}
-		pthread_mutex_unlock(&u->mutex);
+//		pthread_mutex_unlock(&u->mutex);
 	}
 	return NULL;
 }
@@ -192,9 +186,7 @@ void liveness(cfg_t* cfg)
 	
 	for (i = 0; i < nthread; ++i){
 		size_t p = cfg->nvertex / nthread;
-		printf("p = %zu\n", p);
 		size_t r = (i + 1) * p;
-		printf("r = %zu\n", r);
 		for (j = i * p; j < r; ++j) {
 			u = &cfg->vertex[j];
 			insert_last(&w, u);
@@ -202,7 +194,6 @@ void liveness(cfg_t* cfg)
 		}
 		work[i] = w;
 		w = NULL;
-		printf("i = %zu  j = %zu\n",	 i, j);
 	}
 //	for (i = 0; i < nthread; ++i) {
 //		u = remove_first(&work[i]);
@@ -211,17 +202,14 @@ void liveness(cfg_t* cfg)
 	
 	for(i = 0; i < nthread; ++i){
 		status[i] = pthread_create(&threads[i], NULL, computeIn, (void*) work[i]);
-		if (status[i] == 0)
-			printf("created thread %zu!!\n", i);
-		else
+		if (status[i] != 0)
 			printf("the shit has gone wrong while creating!!\n");
 	}
 
 	for(i = 0; i < nthread; ++i){
-		if (status[i] == 0) {
+		if (status[i] == 0)
 			pthread_join(threads[i], NULL);
-			printf("thread %zu came back!!\n", i);
-		} else
+		else
 			printf("the shit has gone wrong while joining!!\n");
 	}
 }
