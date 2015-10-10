@@ -11,16 +11,19 @@ OUT		= live
 
 LDFLAGS		= -lpthread 
 
-S=100000
-V=100000
+#S=100000
+S=1000
+#V=100000
+V=1000
 U=4
-A=1000
+#A=1000
+A=10
 T=4
 P=0
 
 all: $(OBJS)	
 	$(CC) $(CFLAGS) $(OBJS) $(LDFLAGS) -o $(OUT)
-	#valgrind --tool=helgrind ./$(OUT) $(S) $(V) $(U) $(A) $(T) $(P) $(L)
+#	valgrind --tool=helgrind ./$(OUT) $(S) $(V) $(U) $(A) $(T) $(P) $(L)
 	./$(OUT) $(S) $(V) $(U) $(A) $(T) $(P)
 
 clean:
