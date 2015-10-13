@@ -1,0 +1,50 @@
+%\documentclass[a4paper]{article}
+%
+%\usepackage[english]{babel}
+%\usepackage[utf8]{inputenc}
+%\usepackage{amsmath}
+%\usepackage{graphicx}
+%\usepackage{caption}
+%\usepackage{subcaption}
+%\usepackage{hyperref}
+%\usepackage{lmodern}
+\documentclass[a4paper]{article}
+
+\usepackage[english]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{amssymb}
+%\usepackage{mathtools}
+\usepackage{letltxmacro}
+\usepackage{graphicx}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{hyperref}
+\hypersetup{colorlinks = true, urlcolor=blue}
+\usepackage{lmodern}
+\usepackage{url}
+
+\title{Assignment 4: Parallell dataflow analysis}
+\author{ Dalibor Lovric, gda08dlo@student.lu.se \\
+ Daniel Jankovic, ada08dja@student.lu.se }
+
+\date{\today}
+
+\begin{document}
+
+\maketitle
+\paragraph{Performance}
+
+Input data: S=100000, V=10000, U=4, A=100, T=4, P=0
+
+Java   1,473 s
+
+C 		0,848 s
+
+C program performed much faster in comparison to Java program.
+\paragraph{Implementation convenience }
+From a programmers perspective it is easier to parallelize in Java than it is in C. In Java the shared data is protected by using its synchronized implementation. But the draw back comes in the form of poorer performance, not to neglect the fact that Java uses more resources than C. 
+In C  it is preferable to split the tasks into subtasks for each thread with no shared data, however,  on the shared parts the mutexes are to be used. The amount of shared data between threads can increase the risk for clashes. In conclusion, threads have to wait for its turn and thus the longer execution time.
+\end{document}
+
+
