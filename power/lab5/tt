@@ -1,0 +1,6 @@
+file=$*
+
+echo $file.cc
+
+g++ -O3 -g -std=c++11 $file.cc tbr.s timebase.c -m64 -pthread -o $file.out && ./$file.out
+

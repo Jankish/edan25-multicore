@@ -1,0 +1,14 @@
+E kako ide.
+Dokle si stigao
+Varför ville inte tt gå
+ outfilen hette inte b.out
+AHA
+
+
+
+
+	x = atomic_load_explicit(&b, memory_order_relaxed);
+	atomic_store_explicit(&f, sum, memory_order_relaxed);
+
+
+
